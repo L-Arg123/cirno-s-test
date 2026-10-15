@@ -1,0 +1,513 @@
+/* ============================================================================
+   拼9 —— 风格：可爱像素风 / 琪露诺冰蓝白 / 圆角
+   想改配色只改下面这一坨变量就行。
+   ==========================================================================*/
+:root{
+  /* 冰蓝白主色（由浅到深） */
+  --ice-0:#ffffff;
+  --ice-1:#eaf9ff;
+  --ice-2:#c7ecff;
+  --ice-3:#9adeff;
+  --ice-4:#63c8f5;
+  --ice-5:#2f9fdc;
+  --ice-6:#1b6fb0;
+
+  /* 描边深蓝 + 强调色 */
+  --ink:#123a63;
+  --ink-2:#1d4f86;
+  --sky-1:#0b2a52;
+  --sky-2:#1a5c92;
+  --sky-3:#3aa0cf;
+
+  --ok:#3fbf7f;
+  --ok-dark:#248f5c;
+  --bad:#ff7b8a;
+  --bad-dark:#c2425a;
+  --gold:#ffe066;
+  --gold-dark:#d9a91c;
+
+  --panel:rgba(255,255,255,.95);
+  --radius:16px;
+  --radius-s:12px;
+  --pixel:4px;                 /* 像素风描边粗细 */
+  --shadow:0 6px 0 var(--ink);
+  --shadow-s:0 4px 0 var(--ink);
+
+  --font: "Segoe UI", "Zpix", "微软雅黑", "PingFang SC", "Hiragino Sans GB", monospace;
+}
+
+/* ---------------------------------- 基础 --------------------------------- */
+*{box-sizing:border-box;}
+html,body{height:100%;margin:0;}
+body{
+  font-family:var(--font);
+  color:var(--ink);
+  background:
+    radial-gradient(1200px 600px at 50% -10%, #bfeaff 0%, rgba(191,234,255,0) 60%),
+    linear-gradient(180deg, var(--sky-1) 0%, var(--sky-2) 45%, var(--sky-3) 100%);
+  background-attachment:fixed;
+  overflow-x:hidden;
+  -webkit-font-smoothing:none;
+  image-rendering:pixelated;
+  user-select:none;
+}
+/* 像素感：淡淡的网格 */
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;opacity:.10;
+  background-image:linear-gradient(rgba(255,255,255,.6) 1px, transparent 1px),
+                   linear-gradient(90deg, rgba(255,255,255,.6) 1px, transparent 1px);
+  background-size:16px 16px;
+}
+button{font-family:inherit;color:inherit;cursor:pointer;}
+.hidden{display:none !important;}
+
+/* ============================ 背景图 + 装饰层 ============================
+   图层从下到上：背景(0) -> 装饰/弹球(1) -> 界面(.screen 2) -> 顶栏(30) -> 弹窗(60)
+   装饰层本身不吃点击（pointer-events:none），只有图片自己吃，所以永远不会挡住按钮。 */
+#bgWrap{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;}
+#bgImg{
+  position:absolute;left:-8%;top:-8%;width:116%;height:116%;object-fit:cover;
+  /* 虚化 + 倒置（上下翻转）。想改成颜色反相：把下面 transform 去掉，
+     filter 里加 invert(1) 即可 */
+  filter:blur(26px) saturate(1.6) brightness(.52) contrast(1.05);
+  transform:scaleY(-1);
+}
+#bgWrap::after{                       /* 压暗一层，保证字看得清 */
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(6,26,52,.62),rgba(6,26,52,.38) 45%,rgba(6,26,52,.68));
+}
+
+#decoCorners{position:fixed;inset:0;z-index:1;pointer-events:none;}
+#decoCorners img{
+  position:absolute;pointer-events:auto;cursor:pointer;opacity:.96;
+  transition:filter .15s;
+  /* 不圆角、不阴影、悬停无效果 —— 就那样潦草地摆在旁边 */
+}
+/* 边缘渐变虚化：让白底照片四周"晕"进背景里（只支持 mask 的浏览器生效，
+   不支持的话就是普通方图，不影响使用）。想让淡出更窄/更宽，改下面的百分比：
+   55% 之前完全不透明，到 100% 处完全透明。 */
+#decoCorners img,#bouncer,#bouncer2{
+  -webkit-mask-image:radial-gradient(ellipse 66% 66% at 50% 46%, #000 55%, rgba(0,0,0,0) 100%);
+          mask-image:radial-gradient(ellipse 66% 66% at 50% 46%, #000 55%, rgba(0,0,0,0) 100%);
+}
+.deco.pop{animation:pop .3s;}          /* 点一下：缩一下再弹回（退回上一版的效果） */
+/* B2 / B4 身上还叠着"被手按住"的动画，所以要点下去时把两个动画一起列出来
+   （列表里靠后的 pop 会在那 0.3 秒内接管 transform） */
+.d-tr.pop,.d-br.pop{animation:pressDown var(--squash-cycle) ease-in-out infinite, pop .3s;}
+.d-br.pop{animation-delay:calc(var(--squash-cycle) * -0.5), 0s;}
+/* 位置和大小——想挪哪张、想放大缩小就改这几行 */
+.d-tl {left:2px;   top:62px;     width:280px;}
+.d-tr {right:2px;  top:72px;     width:280px;}
+.d-tr2{right:8px;  top:40%;      width:200px;}
+.d-ml {left:0;     top:40%;      width:240px;}
+.d-mr {right:0;    top:62%;      width:240px;}
+.d-bl {left:4px;   bottom:300px; width:280px;}
+.d-br {right:4px;  bottom:300px; width:280px;}
+.d-bl2{left:6px;   bottom:4px;   width:300px;}
+.d-br2{right:6px;  bottom:4px;   width:270px;}
+.d-bc {left:calc(50% - 150px); bottom:30px; width:300px;}
+
+/* 窄屏/矮屏少放几张，免得挤 */
+@media (max-width:1400px){ .d-tr2,.d-bc{display:none;} }
+@media (max-width:1180px){ .d-ml,.d-mr{display:none;} }
+@media (max-width:980px){  .d-bl,.d-br,.d-bl2,.d-br2{display:none;} }
+@media (max-height:900px){ .d-bl,.d-br{display:none;} }
+@media (max-height:760px){ .d-bl2,.d-br2{display:none;} }
+
+/* ============ B2 / B4：像被手按住压下去再松回来（试作版） ============
+   底边固定不动、上边被压低 → 看着就是"有人按着它的头往下压"，
+   按住停一下再慢慢松开；不做过冲、不做拉长，所以没有果冻感。
+   想改：--squash-cycle 周期；下面 .86 是压多少（越小越扁）；
+   28%~46% 是"按住"的时长。 */
+:root{ --squash-cycle: 4.2s; }
+.d-tr,.d-br{
+  transform-origin:50% 100%;                 /* 以底边为轴：底不动、上面压下来 */
+  animation:pressDown var(--squash-cycle) ease-in-out infinite;
+}
+.d-br{ animation-delay:calc(var(--squash-cycle) * -0.5); }   /* 右下错开半拍，两边不同时被按 */
+
+@keyframes pressDown{
+  0%,  6%   { transform:scale(1,1); }          /* 站着不动 */
+  28%       { transform:scale(1.055,.86); }    /* 被按下去 */
+  46%       { transform:scale(1.055,.86); }    /* 按住一小会儿 */
+  72%       { transform:scale(1.012,.988); }   /* 松手，缓慢回升 */
+  84%, 100% { transform:scale(1,1); }          /* 复位 */
+}
+
+/* 慢速弹球（同样在 UI 下层，且不吃点击） */
+#bouncer,#bouncer2{
+  position:fixed;left:0;top:0;z-index:1;width:220px;pointer-events:none;
+}
+
+/* ====================== 胜利画面：baka 视频 + 两只 T 动图 ======================
+   图层：视频在下，两只 T 动图压住视频，提示框/结算框（z-index 60）压住它们全部 */
+#winLayer{position:fixed;inset:0;z-index:55;pointer-events:none;overflow:hidden;}
+#winLayer video{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  min-width:100%;min-height:100%;width:auto;height:auto;
+  object-fit:cover;z-index:0;
+}
+.win-t{
+  position:absolute;bottom:-10px;width:340px;pointer-events:none;z-index:1;
+  /* 和装饰图一样做边缘渐变 */
+  -webkit-mask-image:radial-gradient(ellipse 68% 68% at 50% 45%, #000 55%, rgba(0,0,0,0) 100%);
+          mask-image:radial-gradient(ellipse 68% 68% at 50% 45%, #000 55%, rgba(0,0,0,0) 100%);
+}
+.win-tl{left:-20px;animation:bob 3.2s ease-in-out infinite;}
+.win-tr{right:-20px;animation:bob 3.2s ease-in-out infinite reverse;}
+@media (max-width:1100px){ .win-t{width:240px;} }
+
+/* ============ 雪花特效（只在放「冬之花」那首 BGM 时挂到页面上，见 game.js） ============ */
+.snowfield{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden;}
+.snowflake{
+  position:absolute;top:-12%;
+  animation:fall linear infinite;
+  filter:drop-shadow(0 0 3px rgba(255,255,255,.7));
+}
+@keyframes fall{
+  0%{transform:translateY(-10vh) translateX(0) rotate(0deg);}
+  100%{transform:translateY(110vh) translateX(24px) rotate(180deg);}
+}
+
+/* ====================== 彩蛋：小火把 / 小青蛙 / 冰青蛙 ======================
+   故意做得虚、暗、小，鼠标指上去连光标都不变（不然一眼就暴露了）。
+   出现在外周一圈，图层和装饰图同级（大面板会盖住它，所以尽量在边缘找）。 */
+.egg{
+  position:fixed;z-index:1;pointer-events:auto;
+  cursor:default;                       /* 不变成小手，避免暴露 */
+  opacity:.55;
+  filter:blur(1.2px);
+  animation:eggIn .8s ease-out;
+  transition:none;                      /* 悬停也不要有任何变化 */
+}
+.egg:hover,.egg:active{opacity:.55;filter:blur(1.2px);transform:none;}
+/* 屏幕太挤、外围一圈全被面板占住时的退让方案：浮到面板之上，保证看得见 */
+.egg.front{z-index:5;}
+@keyframes eggIn{ from{opacity:0;filter:blur(4px);} to{opacity:.55;filter:blur(1.2px);} }
+.title-badge{
+  width:110px;height:110px;border-radius:50%;
+  border:var(--pixel) solid var(--ink);
+  background:linear-gradient(180deg,var(--ice-0),var(--ice-3));
+  color:var(--ink);font-size:64px;font-weight:800;line-height:1;
+  display:grid;place-items:center;box-shadow:var(--shadow);
+  animation:bob 3.4s ease-in-out infinite;
+}
+
+/* 弹窗里放真实图片时用 */
+.modal-img{width:132px;display:block;margin:0 auto;}
+
+/* --------------------------------- 顶栏 --------------------------------- */
+.topbar{
+  position:fixed;top:12px;right:14px;z-index:30;
+  display:flex;align-items:center;gap:10px;
+}
+.music-widget{position:relative;display:flex;align-items:center;gap:6px;}
+.icon-btn{
+  width:46px;height:46px;border-radius:50%;
+  border:var(--pixel) solid var(--ink);
+  background:linear-gradient(180deg,var(--ice-1),var(--ice-3));
+  color:var(--ink);display:grid;place-items:center;
+  box-shadow:var(--shadow-s);padding:0;position:relative;
+  transition:transform .06s, filter .15s;
+}
+.icon-btn:hover{filter:brightness(1.06);}
+.icon-btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink);}
+.note-svg{width:26px;height:26px;color:var(--ink);}
+.small-arrow{width:34px;height:34px;font-size:14px;line-height:1;}
+.info-btn{font-size:24px;font-weight:800;font-style:italic;line-height:1;}
+
+/* 播放中：音符旋转 */
+.music-widget.playing .note-svg{animation:spin 3.2s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* 静音：音符上一道斜杠 */
+.note-slash{
+  position:absolute;left:50%;top:50%;width:34px;height:5px;border-radius:3px;
+  background:var(--bad-dark);transform:translate(-50%,-50%) rotate(-40deg);
+  box-shadow:0 0 0 2px var(--ice-0);display:none;
+}
+.music-widget.muted .note-slash{display:block;}
+
+/* 音乐下拉菜单 */
+.popup-menu{
+  position:absolute;top:56px;right:0;min-width:150px;z-index:40;
+  background:var(--panel);border:var(--pixel) solid var(--ink);
+  border-radius:var(--radius-s);box-shadow:var(--shadow-s);
+  padding:6px;display:flex;flex-direction:column;gap:4px;
+}
+.menu-item{
+  border:none;background:transparent;text-align:left;
+  padding:8px 10px;border-radius:8px;font-size:15px;
+}
+.menu-item:hover{background:var(--ice-2);}
+.menu-item.active{background:var(--ice-3);font-weight:700;}
+
+/* --------------------------------- 屏幕 --------------------------------- */
+.screen{
+  position:relative;z-index:2;
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  min-height:100vh;padding:80px 16px 40px;gap:18px;
+  pointer-events:none;                /* 空白处的点击穿透到装饰层 */
+}
+.screen > *{pointer-events:auto;}     /* 屏幕里的实际内容照常吃点击 */
+.screen.active{display:flex;}
+
+/* --------------------------------- 首页 --------------------------------- */
+.title-cirno{margin-bottom:-6px;animation:bob 3s ease-in-out infinite;}
+@keyframes bob{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
+.pixel-sprite{display:block;line-height:0;}
+.pixel-sprite i{display:block;}
+.game-title{
+  margin:0;font-size:64px;letter-spacing:6px;color:var(--ice-1);
+  text-shadow:0 4px 0 var(--ink), 0 0 18px var(--ice-3), 4px 0 0 var(--ink),-4px 0 0 var(--ink);
+}
+.game-sub{margin:0;color:var(--ice-1);opacity:.95;font-size:16px;letter-spacing:1px;}
+.footnote{position:fixed;bottom:10px;left:0;right:0;text-align:center;
+  font-size:12px;color:var(--ice-1);opacity:.7;}
+
+/* --------------------------------- 按钮 --------------------------------- */
+.big-btn{
+  border:var(--pixel) solid var(--ink);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--ice-1),var(--ice-3));
+  color:var(--ink);font-size:24px;font-weight:800;letter-spacing:3px;
+  padding:14px 34px;box-shadow:var(--shadow);
+  transition:transform .06s, box-shadow .06s, filter .15s;
+}
+.big-btn:hover{filter:brightness(1.05);}
+.big-btn:active{transform:translateY(4px);box-shadow:0 2px 0 var(--ink);}
+.big-btn.small{font-size:18px;padding:10px 20px;letter-spacing:2px;}
+.ghost-btn{
+  border:3px solid var(--ink);border-radius:var(--radius-s);
+  background:var(--panel);color:var(--ink);font-size:16px;font-weight:700;
+  padding:8px 16px;box-shadow:var(--shadow-s);
+}
+.ghost-btn.small{font-size:14px;padding:7px 12px;}
+.ghost-btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink);}
+.bonus-btn{
+  border:3px solid var(--gold-dark);border-radius:var(--radius-s);
+  background:linear-gradient(180deg,#fff6cf,var(--gold));
+  color:#6b4a00;font-weight:800;font-size:14px;padding:8px 12px;
+  box-shadow:0 4px 0 var(--gold-dark);
+}
+.bonus-btn:disabled{filter:grayscale(.7);opacity:.6;box-shadow:0 4px 0 #888;}
+.bonus-btn:not(:disabled):active{transform:translateY(3px);box-shadow:0 1px 0 var(--gold-dark);}
+
+/* --------------------------------- 选关 --------------------------------- */
+.screen-title{
+  margin:0;color:var(--ice-1);font-size:34px;letter-spacing:4px;
+  text-shadow:0 3px 0 var(--ink);
+}
+.level-row{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;}
+.level-card{
+  width:158px;padding:14px 10px 12px;
+  border:var(--pixel) solid var(--ink);border-radius:var(--radius);
+  background:var(--panel);box-shadow:var(--shadow);
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  transition:transform .08s, filter .15s;
+}
+.level-card:hover{transform:translateY(-3px);filter:brightness(1.03);}
+.level-card:active{transform:translateY(3px);box-shadow:0 2px 0 var(--ink);}
+.level-cn{font-size:22px;font-weight:800;letter-spacing:2px;}
+.level-en{font-size:13px;letter-spacing:1px;color:var(--ice-6);font-weight:700;}
+.level-info{font-size:11px;color:#5b7691;margin-top:2px;}
+.hint-line{max-width:720px;text-align:center;color:var(--ice-1);font-size:13px;opacity:.9;}
+
+/* --------------------------------- 游玩 --------------------------------- */
+#screenGame{justify-content:flex-start;gap:12px;padding-top:74px;}
+.hud{
+  width:min(1040px,96vw);display:flex;align-items:center;gap:12px;
+  background:var(--panel);border:var(--pixel) solid var(--ink);
+  border-radius:var(--radius);box-shadow:var(--shadow-s);padding:8px 12px;
+}
+.hud-mid{flex:1;text-align:center;}
+.hud-level{font-size:18px;font-weight:800;letter-spacing:1px;}
+.hud-round{font-size:13px;color:var(--ice-6);}
+.hud-right{text-align:right;min-width:110px;}
+.hud-timer{font-size:22px;font-weight:800;}
+.hud-timer.low{color:var(--bad-dark);animation:pulse .6s infinite alternate;}
+@keyframes pulse{to{transform:scale(1.08);}}
+.hud-score{font-size:13px;color:var(--ice-6);}
+
+.timerbar{
+  width:min(1040px,96vw);height:16px;border:3px solid var(--ink);
+  border-radius:10px;background:#dff2fd;overflow:hidden;box-shadow:var(--shadow-s);
+}
+#timerFill{height:100%;width:100%;border-radius:6px;
+  background:linear-gradient(90deg,var(--ice-3),var(--ice-5));transition:width .1s linear;}
+#timerFill.low{background:linear-gradient(90deg,#ffc4cc,var(--bad));}
+
+.puzzle-area{
+  width:min(1040px,96vw);background:var(--panel);border:var(--pixel) solid var(--ink);
+  border-radius:var(--radius);box-shadow:var(--shadow-s);padding:12px;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+}
+.puzzle-nums{
+  display:grid;grid-template-columns:repeat(4, auto);gap:10px;justify-content:center;
+}
+.pnum{
+  width:56px;height:56px;border:3px solid var(--ink);border-radius:12px;
+  background:linear-gradient(180deg,var(--ice-0),var(--ice-2));
+  display:grid;place-items:center;font-size:26px;font-weight:800;
+  box-shadow:0 3px 0 var(--ink);transition:opacity .15s, transform .1s;
+}
+.pnum.used{opacity:.22;transform:scale(.94);}
+.puzzle-meta{font-size:12px;color:var(--ice-6);}
+
+.answer-area,.palette-area{
+  width:min(1040px,96vw);background:var(--panel);border:var(--pixel) solid var(--ink);
+  border-radius:var(--radius);box-shadow:var(--shadow-s);padding:10px 12px;
+}
+.area-label{font-size:12px;color:var(--ice-6);margin-bottom:6px;letter-spacing:1px;}
+.slots{display:flex;flex-direction:column;gap:8px;}
+.slot{
+  min-height:58px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  border:3px dashed var(--ice-4);border-radius:var(--radius-s);
+  padding:6px 10px;background:#f6fcff;cursor:pointer;transition:background .15s;
+}
+.slot.active{border-style:solid;background:#fff;box-shadow:0 0 0 3px var(--ice-2) inset;}
+.slot.locked{border-style:solid;border-color:var(--ok);background:#effbf4;}
+.slot .slot-tag{font-size:12px;font-weight:800;color:var(--ice-6);min-width:44px;}
+.slot.locked .slot-tag{color:var(--ok-dark);}
+.slot.shake{animation:shake .34s;}
+.slot.bad{animation:flashBad .45s;}
+@keyframes shake{
+  0%,100%{transform:translateX(0);}20%{transform:translateX(-8px);}
+  40%{transform:translateX(8px);}60%{transform:translateX(-5px);}80%{transform:translateX(5px);}
+}
+@keyframes flashBad{
+  0%{background:#ffd9de;box-shadow:0 0 0 4px var(--bad) inset;}
+  100%{background:#f6fcff;box-shadow:none;}
+}
+.slot-ok{color:var(--ok-dark);font-weight:800;font-size:18px;}
+.slot-hint{color:#93a9bb;font-size:13px;}
+
+/* 已输入的小方块 / 圆圈 */
+.tok{display:grid;place-items:center;font-weight:800;font-size:20px;border:3px solid var(--ink);}
+.tok.num{width:42px;height:42px;border-radius:10px;background:var(--ice-1);box-shadow:0 2px 0 var(--ink);}
+.tok.op{width:38px;height:38px;border-radius:50%;background:#fff3c9;box-shadow:0 2px 0 var(--ink);}
+.tok.paren{background:var(--ice-2);}
+
+/* 调色板 */
+.palette-area{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;}
+.palette-col{flex:1;min-width:240px;}
+.num-pad,.op-pad{display:flex;flex-wrap:wrap;gap:8px;}
+.pad-btn{
+  display:grid;place-items:center;font-weight:800;border:3px solid var(--ink);
+  transition:transform .06s, filter .1s;
+}
+.pad-btn.num{
+  width:52px;height:52px;border-radius:12px;font-size:24px;
+  background:linear-gradient(180deg,var(--ice-0),var(--ice-2));box-shadow:0 3px 0 var(--ink);
+}
+.pad-btn.op{
+  width:48px;height:48px;border-radius:50%;font-size:22px;
+  background:linear-gradient(180deg,#fff8d9,var(--gold));box-shadow:0 3px 0 var(--ink);
+}
+/* 小括号：和运算符一样是圆形，但用冰蓝色区分 */
+.pad-btn.paren{
+  background:linear-gradient(180deg,var(--ice-0),var(--ice-3));
+}
+.pad-btn:hover{filter:brightness(1.05);}
+.pad-btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink);}
+.pad-btn:disabled{opacity:.3;filter:grayscale(.6);cursor:not-allowed;box-shadow:0 3px 0 #9aa;}
+.action-col{display:flex;flex-direction:column;gap:8px;min-width:132px;}
+.hint-bar{
+  width:min(1040px,96vw);min-height:24px;text-align:center;color:var(--ice-1);
+  font-size:14px;font-weight:700;text-shadow:0 2px 0 rgba(0,0,0,.25);
+}
+.hint-bar.good{color:#c8ffdd;}
+.hint-bar.warn{color:#ffd9de;}
+
+/* --------------------------------- 弹窗 --------------------------------- */
+.modal{
+  position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;
+  background:rgba(10,32,58,.55);backdrop-filter:blur(2px);padding:20px;
+}
+.modal-box{
+  position:relative;
+  width:min(560px,94vw);background:var(--panel);
+  border:var(--pixel) solid var(--ink);border-radius:22px;
+  box-shadow:0 10px 0 var(--ink);padding:22px 22px 18px;text-align:center;
+  animation:pop .18s ease-out;
+}
+.modal-inner{transition:opacity .18s;}
+
+/* 右上角的 − / + ：把提示框变成"几乎透明"，方便看清后面的动画；再点一下还原 */
+.mini-toggle{
+  position:absolute;top:8px;right:10px;z-index:2;
+  width:30px;height:30px;padding:0;border-radius:50%;
+  border:var(--pixel) solid var(--ink);
+  background:linear-gradient(180deg,var(--ice-1),var(--ice-3));
+  color:var(--ink);font-size:20px;font-weight:800;line-height:1;
+  display:grid;place-items:center;box-shadow:var(--shadow-s);cursor:pointer;
+}
+.mini-toggle:hover{filter:brightness(1.07);}
+.mini-toggle:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ink);}
+
+/* 透明状态：内容整体淡到几乎看不见，但 − / + 按钮保持清晰可点
+   （第一条选择器是为了压过上面的 #modal.soft .modal-box 虚化样式） */
+#modal.soft .modal-box.ghost,#modal .modal-box.ghost,#resultScreen .modal-box.ghost{
+  background:rgba(233,248,255,.05);
+  border-color:transparent;                      /* 边缘完全透明：不留描边 */
+  box-shadow:none;filter:none;
+  -webkit-backdrop-filter:none;backdrop-filter:none;
+}
+.modal-box.ghost .modal-inner{opacity:.10;}
+.modal.ghostbg{background:rgba(10,32,58,.05) !important;}   /* 遮罩也一起让开 */
+@keyframes pop{from{transform:scale(.86);opacity:0;}to{transform:scale(1);opacity:1;}}
+.modal-sprite{margin:0 auto 6px;}
+.modal-title{margin:6px 0 10px;font-size:24px;letter-spacing:2px;}
+.modal-text{margin:0 0 16px;font-size:15px;line-height:1.7;color:var(--ink-2);text-align:left;}
+.modal-text.credit{max-height:46vh;overflow:auto;}
+.modal-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
+
+/* 胜利提示框：它压在 baka 视频上面，所以做得柔一点 ——
+   半透明 + 背景虚化（磨砂）+ 轻微柔焦，视频透出来，别糊得太死。
+   想更虚就把 blur 调大、背景 alpha 调小；想恢复清爽就把 game.js 里的 soft:true 去掉。 */
+#modal.soft{background:rgba(10,32,58,.28);}
+#modal.soft .modal-box{
+  background:rgba(233,248,255,.70);
+  -webkit-backdrop-filter:blur(10px) saturate(1.15);
+          backdrop-filter:blur(10px) saturate(1.15);
+  filter:blur(.35px);
+  border-color:rgba(20,58,100,.5);
+  box-shadow:0 10px 30px rgba(6,26,52,.45);
+}
+.result-body{text-align:left;font-size:15px;line-height:1.9;margin-bottom:16px;}
+.result-body b{color:var(--ice-6);}
+
+/* ===================== 失败结算动画（鬼畜 baka 大乱斗） =====================
+   图层 z-index:20 —— 在提示框/结算框（60）之下，但盖得住封面那些装饰素材。
+   素材由 game.js 动态丢进来：先一张张冒，3 秒后越来越快，7 秒时 single.jpg 突脸定格。 */
+#resultScreen.failmode{background:rgba(10,32,58,.12);}   /* 遮罩调淡，看得见后面的乱飞素材 */
+#modal.failbg{background:rgba(10,32,58,.22);}            /* 失败提示框：同样调淡，露出后面的动画 */
+
+.fail-layer{position:fixed;inset:0;z-index:20;pointer-events:none;overflow:hidden;}
+.fail-pic{
+  position:absolute;
+  transform:rotate(var(--r,0deg));
+  animation:failPop .2s ease-out;
+  /* 这里故意不加 drop-shadow：几十张图各带一层滤镜会明显吃性能 */
+}
+@keyframes failPop{
+  from{transform:rotate(var(--r,0deg)) scale(.4);opacity:0;}
+  to  {transform:rotate(var(--r,0deg)) scale(1);}
+}
+/* 突脸：bo.jpg 旋转 5 整圈（1800°）+ 越来越大，最后定格（forwards 停在最后一帧） */
+.fail-jump{
+  position:absolute;left:50%;top:50%;width:340px;z-index:5;
+  animation:failJump 1s cubic-bezier(.25,.9,.3,1) forwards;
+}
+@keyframes failJump{
+  from{transform:translate(-50%,-50%) rotate(0deg)     scale(.5);  opacity:.25;}
+  to  {transform:translate(-50%,-50%) rotate(1800deg)  scale(3.6); opacity:1;}
+}
+
+@media (max-width:720px){
+  .game-title{font-size:44px;}
+  .pnum{width:44px;height:44px;font-size:20px;}
+  .pad-btn.num{width:44px;height:44px;font-size:20px;}
+  .pad-btn.op{width:42px;height:42px;font-size:18px;}
+  .level-card{width:132px;}
+  .big-btn{font-size:20px;padding:12px 24px;}
+}
